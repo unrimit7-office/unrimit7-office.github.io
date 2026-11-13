@@ -32,6 +32,10 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Decode x2t wasm (GitHub Pages cannot send Content-Encoding br)
+        run: |
+          node -e "const z=require('zlib'),fs=require('fs');const p='dist/sdkjs/common/wasm/x2t/x2t.wasm.br';const raw=z.brotliDecompressSync(fs.readFileSync(p));fs.writeFileSync(p,raw);console.log('x2t decoded bytes',raw.length)"
+
       - name: Prepare for GitHub Pages
         run: |
           touch dist/.nojekyll
