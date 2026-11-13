@@ -1,20 +1,13 @@
 name: pages-build-site
+# unrimit7-office: build the real editor (dist/) and publish it at
+# https://unrimit7-office.github.io/ (site root, because the editor uses
+# absolute paths such as /sdkjs and /web-apps). Used by MyMemo for PPT editing.
 on:
-  # The editor now lives at https://edit.chaxus.com (Cloudflare Pages).
-  # GitHub Pages publishes ONLY a client-side redirector (redirect/), so old
-  # ranuts.github.io/document/* links keep working (path + query preserved).
-  # GitHub Pages keeps serving the last published artifact, so the redirector
-  # only needs republishing when it changes; every other push to main used to
-  # redeploy the same two files. workflow_dispatch republishes by hand.
   push:
     branches:
       - main
-    paths:
-      - "redirect/**"
-      - ".github/workflows/pages-build-site.yml"
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
@@ -26,19 +19,29 @@ concurrency:
 
 jobs:
   build:
-    name: Publish redirector
+    name: Build editor
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # No build: just ship the static redirector (redirect/index.html + 404.html).
-      - name: Upload redirector artifact
+      - name: Set up the toolchain
+        uses: ./.github/actions/setup
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Prepare for GitHub Pages
+        run: |
+          touch dist/.nojekyll
+          if [ -f dist/index.html ] && [ ! -f dist/404.html ]; then cp dist/index.html dist/404.html; fi
+          du -sh dist
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: "./redirect"
+          path: "./dist"
 
   deploy:
     name: Deploy to GitHub Pages
@@ -47,7 +50,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
